@@ -30,7 +30,7 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`\n🏫 School Attendance Notifier (MVC)`);
   console.log(`   → http://localhost:${PORT}`);

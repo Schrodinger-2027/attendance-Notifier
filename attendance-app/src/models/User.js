@@ -9,7 +9,7 @@ const users = [
   // Pre-seeded teacher account
   {
     id: 1,
-    name: "Mrs. Sharma",
+    name: "Mr. Pritam",
     email: "teacher@school.com",
     passwordHash: bcrypt.hashSync("teacher123", 10),
     role: "teacher",
