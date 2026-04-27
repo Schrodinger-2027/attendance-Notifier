@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Attendance Notifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #080c12; --surface: #0f1520; --surface2: #151d2e; --surface3: #1c2640;
+    --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.12);
+    --text: #e2e8f8; --muted: #6b7a9e; --dim: #3d4a68;
+    --accent: #4f8ef7; --accent2: #3d7ef0;
+    --green: #34d484; --green-bg: rgba(52,212,132,0.1); --green-border: rgba(52,212,132,0.2);
+    --red: #f7546a;   --red-bg: rgba(247,84,106,0.1);   --red-border: rgba(247,84,106,0.2);
+    --amber: #f5a623; --amber-bg: rgba(245,166,35,0.1); --amber-border: rgba(245,166,35,0.2);
+    --teal: #2dd4e8;  --teal-bg: rgba(45,212,232,0.1);  --teal-border: rgba(45,212,232,0.2);
+    --purple: #a78bfa;
+    --r: 10px; --r-lg: 14px;
+    --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(79,142,247,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 85% 110%, rgba(52,212,132,0.05) 0%, transparent 60%);
+  }
+
+  /* ── LAYOUT ────────────────────────────────────────────────────── */
+  #app { position: relative; z-index: 1; min-height: 100vh; }
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; }
+
+  /* ── AUTH PAGE ─────────────────────────────────────────────────── */
+  #auth-page {
+    align-items: center; justify-content: center; padding: 2rem 1rem;
+    flex-direction: column;
+  }
+  .auth-box {
+    width: 100%; max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .auth-logo {
+    padding: 2rem 2rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .auth-logo .logo-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(79,142,247,0.2), rgba(52,212,132,0.15));
+    border: 1px solid rgba(79,142,247,0.3);
+    font-size: 24px; margin-bottom: 12px;
+  }
+  .auth-logo h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .auth-logo p  { font-size: 12px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+  .auth-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .auth-tab {
+    flex: 1; padding: 12px; font-size: 13px; font-weight: 600;
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; transition: all 0.2s; font-family: var(--font);
+    position: relative;
+  }
+  .auth-tab.active { color: var(--text); }
+  .auth-tab.active::after {
+    content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+    height: 2px; background: var(--accent); border-radius: 2px 2px 0 0;
+  }
+
+  .auth-form { padding: 1.5rem 2rem 2rem; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--mono); }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px 14px; border-radius: var(--r);
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); font-size: 14px; font-family: var(--font);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: #1c2640; }
+
+  .btn-primary {
+    width: 100%; padding: 12px; border-radius: var(--r);
+    background: var(--accent); border: none; color: #fff;
+    font-size: 14px; font-weight: 700; font-family: var(--font);
+    cursor: pointer; transition: background 0.15s, transform 0.1s;
+    margin-top: 4px;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .auth-hint {
+    margin-top: 1.25rem; padding: 12px 14px;
+    background: var(--surface2); border-radius: var(--r);
+    border: 1px solid var(--border);
+    font-size: 11px; color: var(--muted); line-height: 1.7;
+    font-family: var(--mono);
+  }
+  .auth-hint strong { color: var(--text); }
+  .auth-error {
+    padding: 10px 12px; border-radius: var(--r);
+    background: var(--red-bg); border: 1px solid var(--red-border);
+    color: var(--red); font-size: 12px; margin-bottom: 14px;
+    display: none;
+  }
+  .auth-error.show { display: block; }
+
+  /* ── MAIN DASHBOARD ────────────────────────────────────────────── */
+  #main-page { flex-direction: column; padding: 1.5rem; }
+  .wrap { max-width: 900px; margin: 0 auto; width: 100%; }
+
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px; }
+  .header-left h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+  .header-left p  { font-size: 12px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+  .header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .pill {
+    font-size: 11px; font-weight: 500; padding: 4px 12px;
+    border-radius: 99px; border: 1px solid var(--border2);
+    background: var(--surface2); color: var(--muted); font-family: var(--mono);
+  }
+  .pill.role-teacher { background: rgba(79,142,247,0.1); color: var(--accent); border-color: rgba(79,142,247,0.25); }
+  .pill.role-student { background: rgba(167,139,250,0.1); color: var(--purple); border-color: rgba(167,139,250,0.25); }
+  .pill.live { background: var(--green-bg); color: var(--green); border-color: var(--green-border); display: flex; align-items: center; gap: 5px; }
+  .dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1.4s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.25} }
+
+  .btn-logout {
+    font-size: 11px; font-weight: 600; padding: 5px 14px;
+    border: 1px solid var(--border2); border-radius: 8px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: var(--mono); transition: all 0.15s;
+  }
+  .btn-logout:hover { border-color: var(--red-border); color: var(--red); }
+
+  /* Role banner */
+  .role-banner {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-radius: var(--r); margin-bottom: 1.25rem;
+    font-size: 12px; font-family: var(--mono);
+  }
+  .rb-teacher { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2); color: #7aaaff; }
+  .rb-student { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); color: var(--purple); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; text-align: center; }
+  .stat-val { font-size: 30px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+  .stat-val.green { color: var(--green); } .stat-val.red { color: var(--red); } .stat-val.amber { color: var(--amber); }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--mono); }
+
+  /* Grid */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media(max-width:620px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .panel-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-family: var(--mono); }
+
+  /* Roll */
+  .student-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .student-row:last-child { border-bottom: none; }
+  .student-row:hover { background: rgba(255,255,255,0.02); }
+
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; font-family: var(--mono);
+  }
+  .av-blue   { background: rgba(79,142,247,0.15); color: #7aaaff; border: 1px solid rgba(79,142,247,0.25); }
+  .av-teal   { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
+  .av-purple { background: rgba(167,139,250,0.1); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+  .av-coral  { background: rgba(247,84,106,0.1); color: #f98faa; border: 1px solid var(--red-border); }
+  .av-amber  { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+  .av-pink   { background: rgba(249,115,200,0.1); color: #f97bd5; border: 1px solid rgba(249,115,200,0.2); }
+
+  .student-info { flex: 1; min-width: 0; }
+  .student-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .parent-name  { font-size: 11px; color: var(--dim); margin-top: 1px; font-family: var(--mono); }
+
+  /* Teacher toggle buttons */
+  .toggle-group { display: flex; border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+  .tog {
+    padding: 5px 10px; font-size: 10px; font-weight: 700; font-family: var(--mono);
+    border: none; background: transparent; color: var(--dim); cursor: pointer;
+    transition: background 0.15s, color 0.15s; border-right: 1px solid var(--border);
+  }
+  .tog:last-child { border-right: none; }
+  .tog:hover { background: var(--surface2); color: var(--muted); }
+  .tog.p-on { background: var(--green-bg);  color: var(--green); }
+  .tog.l-on { background: var(--amber-bg);  color: var(--amber); }
+  .tog.a-on { background: var(--red-bg);    color: var(--red);   }
+  .tog:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Student status badge (read-only view) */
+  .status-badge {
+    font-size: 10px; font-weight: 700; padding: 3px 10px;
+    border-radius: 99px; font-family: var(--mono); flex-shrink: 0;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sb-present { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .sb-absent  { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-border);   }
+  .sb-late    { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+  /* Spinner */
+  .sending-spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid var(--border2); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Notification panel */
+  .notif-scroll { overflow-y: auto; max-height: 380px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .notif-scroll::-webkit-scrollbar { width: 3px; }
+  .notif-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  .notif-empty { padding: 2.5rem 1.5rem; text-align: center; color: var(--dim); font-size: 11px; line-height: 1.7; font-family: var(--mono); }
+  .notif-item {
+    display: flex; gap: 10px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: var(--r);
+    background: var(--surface2); animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+  .notif-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .ni-queued  { background: var(--teal-bg); border: 1px solid var(--teal-border); }
+  .ni-error   { background: var(--red-bg);  border: 1px solid var(--red-border);  }
+  .notif-body { flex: 1; min-width: 0; }
+  .notif-top  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; gap: 6px; }
+  .notif-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .notif-time  { font-size: 10px; color: var(--dim); font-family: var(--mono); flex-shrink: 0; }
+  .notif-msg   { font-size: 11px; color: var(--muted); line-height: 1.5; font-family: var(--mono); }
+  .ntag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 99px; margin-top: 5px; font-family: var(--mono); text-transform: uppercase; }
+  .nt-absent   { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-border); }
+  .nt-late     { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+  .nt-resolved { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .nt-queued   { background: var(--teal-bg);  color: var(--teal);  border: 1px solid var(--teal-border); }
+  .nt-nomail   { background: var(--surface3); color: var(--muted); border: 1px solid var(--border2); }
+
+  .panel-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .footer-note { font-size: 10px; color: var(--dim); font-family: var(--mono); }
+  .btn-clear { font-size: 11px; font-weight: 600; padding: 4px 12px; border: 1px solid var(--border2); border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; font-family: var(--mono); transition: all 0.15s; }
+  .btn-clear:hover { background: var(--surface2); color: var(--text); }
+
+  /* Queue indicator */
+  .queue-badge { display: flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--mono); padding: 3px 10px; border-radius: 99px; background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── AUTH PAGE ─────────────────────────────────────────────── -->
+  <div id="auth-page" class="page active">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="logo-icon">🏫</div>
+        <h1>Attendance Notifier</h1>
+        <p>Springfield Public School · Grade 7</p>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('signin')">Sign In</button>
+        <button class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+      </div>
+      <div class="auth-form">
+        <div class="auth-error" id="auth-error"></div>
+
+        <!-- Sign In form -->
+        <div id="signin-form">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="si-email" placeholder="you@school.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="si-password" placeholder="••••••••" />
+          </div>
+          <button class="btn-primary" id="btn-signin" onclick="doSignin()">Sign In →</button>
+        </div>
+
+        <!-- Sign Up form -->
+        <div id="signup-form" style="display:none">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="su-name" placeholder="Your name" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="su-email" placeholder="you@school.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="su-password" placeholder="Min. 6 characters" />
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <select id="su-role">
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+            </select>
+          </div>
+          <button class="btn-primary" id="btn-signup" onclick="doSignup()">Create Account →</button>
+        </div>
+
+        <div class="auth-hint">
+          <strong>Demo accounts</strong><br>
+          Teacher: <strong>teacher@school.com</strong> / teacher123<br>
+          Student: <strong>deepak@school.com</strong> / student123
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MAIN DASHBOARD ─────────────────────────────────────────── -->
+  <div id="main-page" class="page">
+    <div class="wrap">
+      <header>
+        <div class="header-left">
+          <h1>Attendance Notifier</h1>
+          <p id="header-sub">—</p>
+        </div>
+        <div class="header-right">
+          <span class="pill" id="date-pill"></span>
+          <span class="pill" id="role-pill">—</span>
+          <span class="pill live"><span class="dot-live"></span>Live</span>
+          <button class="btn-logout" onclick="logout()">Sign out</button>
+        </div>
+      </header>
+
+      <div class="role-banner" id="role-banner"></div>
+
+      <div class="stats">
+        <div class="stat-card"><div class="stat-val green" id="s-present">—</div><div class="stat-lbl">Present</div></div>
+        <div class="stat-card"><div class="stat-val red"   id="s-absent">—</div><div class="stat-lbl">Absent</div></div>
+        <div class="stat-card"><div class="stat-val amber" id="s-late">—</div><div class="stat-lbl">Late</div></div>
+      </div>
+
+      <div class="main-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Roll Call</span>
+            <span class="pill" id="roll-mode-pill" style="font-size:10px">—</span>
+          </div>
+          <div id="roll-list">
+            <div style="padding:2rem;text-align:center;color:var(--dim);font-size:12px;font-family:var(--mono)">Loading…</div>
+          </div>
+        </div>
+
+        <div class="panel" style="display:flex;flex-direction:column;">
+          <div class="panel-header">
+            <span class="panel-title">Email Queue Log</span>
+            <span class="queue-badge"><span id="notif-count">0</span> jobs</span>
+          </div>
+          <div class="notif-scroll" id="notif-list">
+            <div class="notif-empty">Email jobs appear here when attendance is marked.</div>
+          </div>
+          <div class="panel-footer">
+            <span class="footer-note">Redis → Bull Queue → Worker → Gmail</span>
+            <button class="btn-clear" onclick="clearLog()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = "";  // same origin
+let token = localStorage.getItem("att_token") || null;
+let currentUser = null;
+let students = [];
+const statusState = {};
+const notifications = [];
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll(".auth-tab").forEach((t, i) => {
+    t.classList.toggle("active", (i === 0 && tab === "signin") || (i === 1 && tab === "signup"));
+  });
+  document.getElementById("signin-form").style.display = tab === "signin" ? "" : "none";
+  document.getElementById("signup-form").style.display = tab === "signup" ? "" : "none";
+  clearAuthError();
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById("auth-error");
+  el.textContent = msg; el.classList.add("show");
+}
+function clearAuthError() {
+  document.getElementById("auth-error").classList.remove("show");
+}
+
+// ── Auth actions ──────────────────────────────────────────────────────────
+async function doSignin() {
+  clearAuthError();
+  const email    = document.getElementById("si-email").value.trim();
+  const password = document.getElementById("si-password").value;
+  if (!email || !password) return showAuthError("Please fill in all fields.");
+  const btn = document.getElementById("btn-signin");
+  btn.disabled = true; btn.textContent = "Signing in…";
+  try {
+    const res  = await fetch(API + "/api/auth/signin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+    const data = await res.json();
+    if (!res.ok) return showAuthError(data.error || "Sign in failed");
+    setSession(data.token, data.user);
+  } finally {
+    btn.disabled = false; btn.textContent = "Sign In →";
+  }
+}
+
+async function doSignup() {
+  clearAuthError();
+  const name     = document.getElementById("su-name").value.trim();
+  const email    = document.getElementById("su-email").value.trim();
+  const password = document.getElementById("su-password").value;
+  const role     = document.getElementById("su-role").value;
+  if (!name || !email || !password) return showAuthError("Please fill in all fields.");
+  const btn = document.getElementById("btn-signup");
+  btn.disabled = true; btn.textContent = "Creating account…";
+  try {
+    const res  = await fetch(API + "/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, password, role }) });
+    const data = await res.json();
+    if (!res.ok) return showAuthError(data.error || "Sign up failed");
+    setSession(data.token, data.user);
+  } finally {
+    btn.disabled = false; btn.textContent = "Create Account →";
+  }
+}
+
+function setSession(tok, user) {
+  token = tok;
+  currentUser = user;
+  localStorage.setItem("att_token", tok);
+  showMain();
+}
+
+function logout() {
+  token = null; currentUser = null;
+  localStorage.removeItem("att_token");
+  showAuth();
+}
+
+function showAuth()  { document.getElementById("auth-page").classList.add("active"); document.getElementById("main-page").classList.remove("active"); }
+function showMain()  { document.getElementById("auth-page").classList.remove("active"); document.getElementById("main-page").classList.add("active"); initMain(); }
+
+// ── Main dashboard ────────────────────────────────────────────────────────
+function initMain() {
+  document.getElementById("date-pill").textContent =
+    new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+
+  const isTeacher = currentUser.role === "teacher";
+  document.getElementById("role-pill").textContent = isTeacher ? "🎓 Teacher" : "🎒 Student";
+  document.getElementById("role-pill").className = "pill role-" + currentUser.role;
+  document.getElementById("header-sub").textContent = currentUser.name + " · " + currentUser.email;
+  document.getElementById("roll-mode-pill").textContent = isTeacher ? "Edit mode" : "View only";
+
+  const banner = document.getElementById("role-banner");
+  if (isTeacher) {
+    banner.className = "role-banner rb-teacher";
+    banner.innerHTML = `<span>🎓</span> <span>You are signed in as a <strong>Teacher</strong> — you can mark attendance and notifications will be queued to Redis.</span>`;
+  } else {
+    banner.className = "role-banner rb-student";
+    banner.innerHTML = `<span>🎒</span> <span>You are signed in as a <strong>Student</strong> — attendance is read-only. Only teachers can change statuses.</span>`;
+  }
+
+  loadStudents();
+}
+
+async function authFetch(url, opts = {}) {
+  return fetch(API + url, {
+    ...opts,
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, ...(opts.headers || {}) },
+  });
+}
+
+async function loadStudents() {
+  try {
+    const res  = await authFetch("/api/students");
+    if (res.status === 401) { logout(); return; }
+    const data = await res.json();
+    students = data.students;
+    students.forEach(s => statusState[s.id] = s.status || "present");
+    renderRoll();
+    loadStats();
+  } catch(e) { console.error("loadStudents", e); }
+}
+
+async function loadStats() {
+  try {
+    const res  = await authFetch("/api/stats");
+    const data = await res.json();
+    document.getElementById("s-present").textContent = data.present;
+    document.getElementById("s-absent").textContent  = data.absent;
+    document.getElementById("s-late").textContent    = data.late;
+  } catch(e) {}
+}
+
+// ── Mark attendance (teacher only) ───────────────────────────────────────
+async function markStudent(id, status) {
+  if (currentUser.role !== "teacher") return;
+  const prev = statusState[id];
+  if (prev === status) return;
+  statusState[id] = status;
+  renderRoll(id, true);
+  try {
+    const res  = await authFetch("/api/attendance", { method: "POST", body: JSON.stringify({ studentId: id, status }) });
+    const data = await res.json();
+    if (res.status === 403) { alert("Access denied — teachers only"); statusState[id] = prev; renderRoll(); return; }
+    if (data.success) {
+      const student = students.find(s => s.id === id);
+      const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      notifications.unshift({
+        type:    data.queued ? "queued" : "nomail",
+        status,
+        title:   data.queued ? `Job #${data.emailJobId} queued` : `No email needed`,
+        msg:     data.queued
+          ? `${student.name} [${status}] → Redis queue → Worker → Gmail`
+          : `${student.name} marked ${status} (no parent alert required)`,
+        time: now,
+      });
+      renderNotifs();
+      loadStats();
+    }
+  } catch(e) {
+    statusState[id] = prev;
+  }
+  renderRoll(id, false);
+}
+
+// ── Render roll ───────────────────────────────────────────────────────────
+function renderRoll(spinId = null, spinning = false) {
+  const isTeacher = currentUser && currentUser.role === "teacher";
+  const el = document.getElementById("roll-list");
+  el.innerHTML = students.map(s => {
+    const cur = statusState[s.id];
+    const isSpinning = spinning && s.id === spinId;
+    if (isTeacher) {
+      return `
+        <div class="student-row">
+          <div class="avatar ${s.av}">${s.initials}</div>
+          <div class="student-info">
+            <div class="student-name">${s.name}</div>
+            <div class="parent-name">${s.parent}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${isSpinning ? `<span class="sending-spinner"></span>` : ""}
+            <div class="toggle-group">
+              <button class="tog ${cur==='present'?'p-on':''}" onclick="markStudent(${s.id},'present')" ${isSpinning?"disabled":""} title="Present">P</button>
+              <button class="tog ${cur==='late'?'l-on':''}"    onclick="markStudent(${s.id},'late')"    ${isSpinning?"disabled":""} title="Late">L</button>
+              <button class="tog ${cur==='absent'?'a-on':''}"  onclick="markStudent(${s.id},'absent')"  ${isSpinning?"disabled":""} title="Absent">A</button>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      return `
+        <div class="student-row">
+          <div class="avatar ${s.av}">${s.initials}</div>
+          <div class="student-info">
+            <div class="student-name">${s.name}</div>
+            <div class="parent-name">${s.parent}</div>
+          </div>
+          <span class="status-badge sb-${cur}">${cur}</span>
+        </div>`;
+    }
+  }).join("");
+}
+
+// ── Render notifications ──────────────────────────────────────────────────
+function renderNotifs() {
+  const el  = document.getElementById("notif-list");
+  const cnt = document.getElementById("notif-count");
+  cnt.textContent = notifications.length;
+  if (!notifications.length) {
+    el.innerHTML = `<div class="notif-empty">Email jobs appear here when attendance is marked.</div>`;
+    return;
+  }
+  el.innerHTML = notifications.slice(0,40).map(n => `
+    <div class="notif-item">
+      <div class="notif-icon ${n.type === 'queued' ? 'ni-queued' : 'ni-error'}">${n.type === 'queued' ? '📬' : '—'}</div>
+      <div class="notif-body">
+        <div class="notif-top">
+          <span class="notif-title">${n.title}</span>
+          <span class="notif-time">${n.time}</span>
+        </div>
+        <div class="notif-msg">${n.msg}</div>
+        <span class="ntag nt-${n.status === 'present' ? 'resolved' : n.status}">${n.status}</span>
+        <span class="ntag ${n.type === 'queued' ? 'nt-queued' : 'nt-nomail'}" style="margin-left:4px">${n.type === 'queued' ? '✓ queued' : '– no email'}</span>
+      </div>
+    </div>`).join("");
+}
+
+function clearLog() { notifications.length = 0; renderNotifs(); }
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+// Auto-restore session from localStorage
+if (token) {
+  // Quickly verify token is still valid
+  fetch(API + "/api/auth/me", { headers: { Authorization: "Bearer " + token } })
+    .then(r => r.json())
+    .then(data => {
+      if (data.user) { currentUser = data.user; showMain(); }
+      else { logout(); }
+    })
+    .catch(() => showAuth());
+}
+</script>
+</body>
+</html>
